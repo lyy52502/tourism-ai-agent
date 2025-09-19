@@ -1,0 +1,37 @@
+app:
+  name: "Tourism AI Agent"
+  version: "1.0.0"
+  debug: true
+
+agent:
+  max_conversation_length: 50
+  preference_extraction_threshold: 0.7
+  recommendation_count: 5
+  
+rag:
+  chunk_size: 512
+  chunk_overlap: 50
+  retrieval_top_k: 10
+  rerank_top_k: 5
+  
+embedding:
+  model: "sentence-transformers/all-mpnet-base-v2"
+  dimension: 768
+  
+recommendation:
+  distance_weight: 0.25
+  preference_weight: 0.35
+  popularity_weight: 0.20
+  novelty_weight: 0.20
+  
+reinforcement_learning:
+  learning_rate: 0.001
+  discount_factor: 0.95
+  epsilon: 0.1
+  batch_size: 32
+  
+location:
+  default_radius_km: 5
+  max_radius_km: 50
+  walking_speed_kmh: 4
+  driving_speed_kmh: 40
