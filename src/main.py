@@ -89,10 +89,7 @@ async def lifespan(app: FastAPI):
         
         # Initialize RAG system
         rag_system = RAGSystem(
-            embedding_model=config['embedding']['model'],
-            milvus_host=os.getenv("MILVUS_HOST", "localhost"),
-            milvus_port=int(os.getenv("MILVUS_PORT", 19530)),
-            collection_name="tourism_knowledge"
+            embedding_model=config['embedding']['model']
         )
         
         # Load initial data if available
