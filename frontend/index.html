@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tourism AI Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            overflow-y: auto;
+            background: #fff;
+            border-bottom: 1px solid #ccc;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+        .user { 
+            background-color: #0084ff; 
+            color: white; 
+            align-self: flex-end;
+        }
+        .agent { 
+            background-color: #e5e5ea; 
+            color: black; 
+            align-self: flex-start;
+        }
+        #recommendations {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 10px;
+        }
+        .card {
+            background: white;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 8px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
+            width: 180px;
+        }
+        #input-container {
+            display: flex;
+            padding: 10px;
+            background: #fff;
+            border-top: 1px solid #ccc;
+        }
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        #send-btn {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 8px;
+            background: #0084ff;
+            color: white;
+            cursor: pointer;
+        }
+        #send-btn:hover {
+            background: #006bbf;
+        }
+    </style>
+</head>
+<body>
+
+<div id="chat-container"></div>
+<div id="recommendations"></div>
+
+<div id="input-container">
+    <input type="text" id="user-input" placeholder="Ask something about tourism..." />
+    <button id="send-btn">Send</button>
+</div>
+
+<script>
+const chatContainer = document.getElementById('chat-container');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const recommendationsContainer = document.getElementById('recommendations');
+
+const session_id = "session_" + Date.now();
+const user_id = "user_" + Date.now();
+const user_location = { lat: 59.8586, lng: 17.6389 }; // 这里可以改成用户实际位置
+
+function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = 'message ' + sender;
+    div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addRecommendations(items) {
+    recommendationsContainer.innerHTML = ''; // 清空
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <strong>${item.name}</strong><br/>
+            Type: ${item.type}<br/>
+            Rating: ${item.rating}<br/>
+            Distance: ${item.distance.toFixed(1)} km<br/>
+            Score: ${item.match_score.toFixed(2)}
+        `;
+        recommendationsContainer.appendChild(card);
+    });
+}
+
+async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    userInput.value = '';
+
+    try {
+        const response = await fetch('http://localhost:8000/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: text,
+                session_id: session_id,
+                user_id: user_id,
+                location: user_location
+            })
+        });
+        const data = await response.json();
+
+        // 处理聊天消息
+        addMessage(data.reply || "Sorry, no reply.", 'agent');
+
+        // 如果有推荐内容，展示卡片
+        if (data.recommendations) {
+            addRecommendations(data.recommendations);
+        }
+
+    } catch (err) {
+        console.error(err);
+        addMessage("Error contacting server.", 'agent');
+    }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+</script>
+
+</body>
+</html>
