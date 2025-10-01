@@ -16,7 +16,8 @@ from openai import OpenAI
 import uvicorn
 from loguru import logger
 import yaml
-
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 # Import our agents and systems
 from core.memory import MemoryManager
 from core.rag_system import RAGSystem
@@ -125,7 +126,7 @@ async def lifespan(app: FastAPI):
         rag_system=rag_system,
         preference_extractor=preference_extractor,
         memory_manager=memory_manager,
-        location_service=location_agent  
+        location_agent=location_agent  
     )
         
         logger.info("All systems initialized successfully")
@@ -173,32 +174,29 @@ async def health_check():
 
 # Chat endpoint
 @app.post("/chat")
-async def chat(request: ChatMessage):
-    """Main chat endpoint for conversations."""
-    try:
-        # Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
-        
-        # Generate user ID if not provided
-        user_id = request.user_id or f"anonymous_{session_id[:8]}"
-        
-        # Process message
-        response = conversation_agent.process_message(
-            session_id=session_id,
-            user_id=user_id,
-            message=request.message,
-            location=request.location
-        )
-        
-        # Add session and user IDs to response
-        response['session_id'] = session_id
-        response['user_id'] = user_id
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+async def chat(request: Request):
+    data = await request.json()
+    message = data.get("message", "")
+    session_id = data.get("session_id")
+    user_id = data.get("user_id")
+    location = data.get("location", {"lat":0, "lng":0})
+
+    recs = recommendation_agent.get_recommendations(user_id, session_id, location)
+
+
+    recommendations = [{
+        "id": r.id,
+        "name": r.name,
+        "type": r.type,
+        "rating": r.rating,
+        "distance": r.distance,
+        "match_score": r.match_score
+    } for r in recs]
+
+   
+    reply = f"Found {len(recommendations)} recommendations for you."
+
+    return {"reply": reply, "recommendations": recommendations}
 
 # WebSocket for real-time chat
 @app.websocket("/ws/{session_id}")
