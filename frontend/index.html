@@ -428,12 +428,21 @@
         <!-- Chat Section -->
         <div class="chat-section">
             <div class="chat-header">
+<<<<<<< HEAD
                 <h1>🌟 Tourism Assistant</h1>
                 <p><span class="status-indicator"></span>Online - Ready to help you explore the world!</p>
             </div>
 
             <div class="quick-actions">
                 <button class="quick-action-btn" onclick="sendQuickAction('What are the top attractions?')">Top Attractions</button>
+=======
+                <h1>🌟 Uppsala Tourism Assistant</h1>
+                <p><span class="status-indicator"></span>Online - Ready to help you explore Uppsala!</p>
+            </div>
+
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="sendQuickAction('What are the top attractions in Uppsala?')">Top Attractions</button>
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 <button class="quick-action-btn" onclick="sendQuickAction('Find restaurants near me')">Nearby Restaurants</button>
                 <button class="quick-action-btn" onclick="sendQuickAction('Museums to visit')">Museums</button>
                 <button class="quick-action-btn" onclick="sendQuickAction('Outdoor activities')">Outdoor Activities</button>
@@ -444,7 +453,11 @@
                 <!-- Welcome message -->
                 <div class="message agent">
                     <div class="message-bubble">
+<<<<<<< HEAD
                         👋 Welcome to the Tourism Assistant! I can help you discover attractions, restaurants, hotels, and events in Uppsala. What would you like to explore today?
+=======
+                        👋 Welcome to Uppsala Tourism Assistant! I can help you discover attractions, restaurants, hotels, and events in Uppsala. What would you like to explore today?
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                     </div>
                 </div>
             </div>
@@ -489,6 +502,7 @@
     </div>
 
     <script>
+<<<<<<< HEAD
 // Configuration
         const API_URL = 'http://localhost:8000';
         const session_id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -497,6 +511,12 @@
         // User location (Uppsala coordinates as default)
         let userLocation = { lat: 59.8586, lng: 17.6389 };
 
+=======
+        // Configuration
+        const API_URL = 'http://localhost:8000';
+        const session_id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const user_id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
         // User location (Uppsala coordinates as default)
         let userLocation = { lat: 59.8586, lng: 17.6389 };
         
