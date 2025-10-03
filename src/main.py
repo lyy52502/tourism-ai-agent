@@ -18,7 +18,10 @@ from loguru import logger
 import yaml
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+<<<<<<< HEAD
 import uuid
+=======
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
 # Import our agents and systems
 from core.memory import MemoryManager
 from core.rag_system import RAGSystem
@@ -176,6 +179,7 @@ async def health_check():
 # Chat endpoint
 @app.post("/chat")
 async def chat(request: Request):
+<<<<<<< HEAD
     """Process chat message and return response with recommendations."""
     try:
         # Parse request data
@@ -257,6 +261,30 @@ async def chat(request: Request):
             "status": "error",
             "error": str(e)
         }
+=======
+    data = await request.json()
+    message = data.get("message", "")
+    session_id = data.get("session_id")
+    user_id = data.get("user_id")
+    location = data.get("location", {"lat":0, "lng":0})
+
+    recs = recommendation_agent.get_recommendations(user_id, session_id, location)
+
+
+    recommendations = [{
+        "id": r.id,
+        "name": r.name,
+        "type": r.type,
+        "rating": r.rating,
+        "distance": r.distance,
+        "match_score": r.match_score
+    } for r in recs]
+
+   
+    reply = f"Found {len(recommendations)} recommendations for you."
+
+    return {"reply": reply, "recommendations": recommendations}
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
 
 # WebSocket for real-time chat
 @app.websocket("/ws/{session_id}")

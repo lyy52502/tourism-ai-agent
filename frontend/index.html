@@ -497,6 +497,10 @@
         // User location (Uppsala coordinates as default)
         let userLocation = { lat: 59.8586, lng: 17.6389 };
 
+        // User location (Uppsala coordinates as default)
+        let userLocation = { lat: 59.8586, lng: 17.6389 };
+        
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
         // Try to get user's actual location
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -534,6 +538,7 @@
             
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
+<<<<<<< HEAD
             
             // Handle HTML content for agent messages
             if (sender === 'agent') {
@@ -541,6 +546,9 @@
             } else {
                 bubbleDiv.textContent = text; // Use textContent for user messages
             }
+=======
+            bubbleDiv.textContent = text;
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
             
             messageDiv.appendChild(bubbleDiv);
             chatMessages.appendChild(messageDiv);
@@ -591,6 +599,7 @@
             
             // Show typing and loading
             showTyping();
+<<<<<<< HEAD
             
             // Check if message is asking for recommendations
             const isAskingForRecommendations = ['recommend', 'suggest', 'find', 'show', 'restaurant', 
@@ -610,6 +619,11 @@
                     location: userLocation
                 });
                 
+=======
+            showLoading();
+            
+            try {
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 // Send to backend
                 const response = await fetch(`${API_URL}/chat`, {
                     method: 'POST',
@@ -624,6 +638,7 @@
                     })
                 });
 
+<<<<<<< HEAD
                 console.log('Response status:', response.status);
 
                 if (!response.ok) {
@@ -634,13 +649,24 @@
 
                 const data = await response.json();
                 console.log('Response data:', data);
+=======
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+
+                const data = await response.json();
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 
                 // Hide typing
                 hideTyping();
                 hideLoading();
                 
                 // Add agent response
+<<<<<<< HEAD
                 addMessage(data.reply || 'I understand your request. Let me help you explore Uppsala!', 'agent');
+=======
+                addMessage(data.reply || 'I found some great recommendations for you!', 'agent');
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 
                 // Display recommendations if any
                 if (data.recommendations && data.recommendations.length > 0) {
@@ -648,6 +674,7 @@
                 }
                 
             } catch (error) {
+<<<<<<< HEAD
                 console.error('Error details:', error);
                 hideTyping();
                 hideLoading();
@@ -663,6 +690,12 @@
                 }
                 
                 addMessage(errorMessage, 'agent');
+=======
+                console.error('Error:', error);
+                hideTyping();
+                hideLoading();
+                addMessage('Sorry, I encountered an error. Please try again.', 'agent');
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
             } finally {
                 // Re-enable send button
                 sendBtn.disabled = false;
@@ -696,11 +729,16 @@
             // Format rating
             const ratingStars = '⭐'.repeat(Math.round(rec.rating || 0));
             
+<<<<<<< HEAD
             // Format match score percentage
             const matchPercentage = Math.round((rec.match_score || 0) * 100);
             
             card.innerHTML = `
                 <span class="match-score">${matchPercentage}% match</span>
+=======
+            card.innerHTML = `
+                <span class="match-score">${Math.round((rec.match_score || 0) * 100)}% match</span>
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 <h3>${rec.name}</h3>
                 <div class="info">
                     <div class="info-item">
@@ -712,7 +750,10 @@
                     <div class="info-item distance">
                         📍 ${rec.distance ? rec.distance.toFixed(1) : '?'} km
                     </div>
+<<<<<<< HEAD
                     ${rec.price_range ? `<div class="info-item">${rec.price_range}</div>` : ''}
+=======
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 </div>
                 <div class="feedback-buttons">
                     <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 5, this)">
@@ -721,7 +762,11 @@
                     <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 1, this)">
                         👎 Not interested
                     </button>
+<<<<<<< HEAD
                     <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${rec.name.replace(/'/g, "\\'")}')">
+=======
+                    <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${rec.name}')">
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                         ℹ️ More info
                     </button>
                 </div>
@@ -779,6 +824,7 @@
             }
         }
 
+<<<<<<< HEAD
         // Test backend connection
         async function testBackendConnection() {
             try {
@@ -812,6 +858,45 @@
                     addMessage('To start the backend server, run: <code>cd backend && python src/main.py</code>', 'agent');
                 }, 2000);
             }
+=======
+        // WebSocket connection (optional for real-time features)
+        function connectWebSocket() {
+            const ws = new WebSocket(`ws://localhost:8000/ws/${session_id}`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('WebSocket message:', data);
+                // Handle real-time updates
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            return ws;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            messageInput.focus();
+            
+            // Optional: Connect WebSocket for real-time features
+            // const ws = connectWebSocket();
+            
+            console.log('Tourism AI Assistant initialized');
+            console.log('Session ID:', session_id);
+            console.log('User ID:', user_id);
+>>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
         });
     </script>
 </body>
