@@ -16,7 +16,9 @@ from openai import OpenAI
 import uvicorn
 from loguru import logger
 import yaml
-
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+import uuid
 # Import our agents and systems
 from core.memory import MemoryManager
 from core.rag_system import RAGSystem
@@ -125,7 +127,7 @@ async def lifespan(app: FastAPI):
         rag_system=rag_system,
         preference_extractor=preference_extractor,
         memory_manager=memory_manager,
-        location_service=location_agent  
+        location_agent=location_agent  
     )
         
         logger.info("All systems initialized successfully")
@@ -173,32 +175,88 @@ async def health_check():
 
 # Chat endpoint
 @app.post("/chat")
-async def chat(request: ChatMessage):
-    """Main chat endpoint for conversations."""
+async def chat(request: Request):
+    """Process chat message and return response with recommendations."""
     try:
-        # Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
+        # Parse request data
+        data = await request.json()
+        message = data.get("message", "")
+        session_id = data.get("session_id", str(uuid.uuid4()))
+        user_id = data.get("user_id", "anonymous")
+        location = data.get("location", {"lat": 59.8586, "lng": 17.6389})  # Default Uppsala
         
-        # Generate user ID if not provided
-        user_id = request.user_id or f"anonymous_{session_id[:8]}"
+        logger.info(f"Chat request - Session: {session_id}, User: {user_id}, Message: {message}")
         
-        # Process message
-        response = conversation_agent.process_message(
+        # Process message through conversation agent
+        response_data = conversation_agent.process_message(
             session_id=session_id,
             user_id=user_id,
-            message=request.message,
-            location=request.location
+            message=message,
+            location=location
         )
         
-        # Add session and user IDs to response
-        response['session_id'] = session_id
-        response['user_id'] = user_id
+        # Get recommendations if appropriate
+        recommendations = []
         
-        return response
+        # Check if the message is asking for recommendations
+        keywords = ['recommend', 'suggest', 'find', 'show', 'restaurant', 'attraction', 'place', 'visit', 'eat', 'do']
+        if any(keyword in message.lower() for keyword in keywords):
+            try:
+                # Get recommendations
+                recs = recommendation_agent.get_recommendations(
+                    user_id=user_id,
+                    session_id=session_id,
+                    location=location,
+                    num_recommendations=5
+                )
+                
+                # Format recommendations for frontend
+                recommendations = [{
+                    "id": r.id,
+                    "name": r.name,
+                    "type": r.type,
+                    "rating": r.rating,
+                    "distance": round(r.distance, 1),
+                    "match_score": round(r.match_score, 2),
+                    "price_range": r.price_range,
+                    "category": r.category
+                } for r in recs]
+                
+                logger.info(f"Generated {len(recommendations)} recommendations")
+            except Exception as e:
+                logger.error(f"Error getting recommendations: {e}")
+        
+        # Prepare response
+        reply = response_data.get('message', f"I understand you're asking about: {message}. Let me help you explore Uppsala!")
+        
+        # Add recommendations info to reply if available
+        if recommendations:
+            reply += f" I found {len(recommendations)} great recommendations for you!"
+        
+        # Store interaction in memory
+        memory_manager.store_interaction(
+            session_id=session_id,
+            user_id=user_id,
+            message={"role": "user", "content": message},
+            response={"role": "assistant", "content": reply},
+            recommendations=recommendations
+        )
+        
+        return {
+            "reply": reply,
+            "recommendations": recommendations,
+            "session_id": session_id,
+            "status": "success"
+        }
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "reply": "I apologize, but I encountered an error processing your request. Please try again.",
+            "recommendations": [],
+            "status": "error",
+            "error": str(e)
+        }
 
 # WebSocket for real-time chat
 @app.websocket("/ws/{session_id}")
