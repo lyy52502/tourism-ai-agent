@@ -2,163 +2,779 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tourism AI Agent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uppsala Tourism AI Assistant</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f0f5;
+        * {
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            box-sizing: border-box;
         }
-        #chat-container {
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            height: 85vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Chat Section */
+        .chat-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 10px;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-messages {
+            flex: 1;
             overflow-y: auto;
-            background: #fff;
-            border-bottom: 1px solid #ccc;
+            padding: 20px;
+            background: #fafafa;
         }
+
         .message {
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
             max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            word-wrap: break-word;
         }
-        .user { 
-            background-color: #0084ff; 
-            color: white; 
-            align-self: flex-end;
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
         }
-        .agent { 
-            background-color: #e5e5ea; 
-            color: black; 
-            align-self: flex-start;
+
+        .message.agent .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
         }
-        #recommendations {
+
+        .typing-indicator {
+            display: none;
+            padding: 20px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator .bubble {
+            background: white;
+            padding: 12px 18px;
+            border-radius: 18px;
+            display: inline-block;
+            border: 1px solid #e0e0e0;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input input:focus {
+            border-color: #667eea;
+        }
+
+        .chat-input button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chat-input button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chat-input button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Recommendations Section */
+        .recommendations-section {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .recommendations-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .recommendations-header h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .recommendations-header p {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .recommendations-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .recommendation-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            cursor: pointer;
+            animation: fadeInRight 0.5s ease;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .recommendation-card:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .recommendation-card h3 {
+            color: #667eea;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .recommendation-card .info {
             display: flex;
             flex-wrap: wrap;
-            margin: 10px;
+            gap: 10px;
+            margin-top: 10px;
         }
-        .card {
-            background: white;
-            padding: 10px;
-            margin: 5px;
-            border-radius: 8px;
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
-            width: 180px;
-        }
-        #input-container {
+
+        .recommendation-card .info-item {
             display: flex;
-            padding: 10px;
-            background: #fff;
-            border-top: 1px solid #ccc;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #666;
         }
-        #user-input {
-            flex: 1;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
+
+        .recommendation-card .rating {
+            color: #f39c12;
         }
-        #send-btn {
-            padding: 10px 20px;
-            margin-left: 10px;
-            border: none;
-            border-radius: 8px;
-            background: #0084ff;
+
+        .recommendation-card .distance {
+            color: #27ae60;
+        }
+
+        .recommendation-card .type {
+            background: #f0f0f0;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .recommendation-card .match-score {
+            float: right;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
         }
-        #send-btn:hover {
-            background: #006bbf;
+
+        .empty-recommendations {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .feedback-btn {
+            padding: 6px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .feedback-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .feedback-btn.liked {
+            background: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            padding: 10px 20px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .quick-action-btn {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .quick-action-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* Loading state */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: 100vh;
+                max-width: 100%;
+                border-radius: 0;
+            }
+
+            .recommendations-section {
+                width: 100%;
+                height: 300px;
+                border-right: none;
+                border-top: 1px solid #e0e0e0;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <div class="chat-header">
+                <h1>🌟 Uppsala Tourism Assistant</h1>
+                <p><span class="status-indicator"></span>Online - Ready to help you explore Uppsala!</p>
+            </div>
 
-<div id="chat-container"></div>
-<div id="recommendations"></div>
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="sendQuickAction('What are the top attractions in Uppsala?')">Top Attractions</button>
+                <button class="quick-action-btn" onclick="sendQuickAction('Find restaurants near me')">Nearby Restaurants</button>
+                <button class="quick-action-btn" onclick="sendQuickAction('Museums to visit')">Museums</button>
+                <button class="quick-action-btn" onclick="sendQuickAction('Outdoor activities')">Outdoor Activities</button>
+                <button class="quick-action-btn" onclick="sendQuickAction('Budget-friendly options')">Budget Options</button>
+            </div>
 
-<div id="input-container">
-    <input type="text" id="user-input" placeholder="Ask something about tourism..." />
-    <button id="send-btn">Send</button>
-</div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Welcome message -->
+                <div class="message agent">
+                    <div class="message-bubble">
+                        👋 Welcome to Uppsala Tourism Assistant! I can help you discover attractions, restaurants, hotels, and events in Uppsala. What would you like to explore today?
+                    </div>
+                </div>
+            </div>
 
-<script>
-const chatContainer = document.getElementById('chat-container');
-const userInput = document.getElementById('user-input');
-const sendBtn = document.getElementById('send-btn');
-const recommendationsContainer = document.getElementById('recommendations');
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="bubble">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
 
-const session_id = "session_" + Date.now();
-const user_id = "user_" + Date.now();
-const user_location = { lat: 59.8586, lng: 17.6389 }; // 这里可以改成用户实际位置
+            <div class="chat-input">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Ask me anything about Uppsala tourism..."
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
 
-function addMessage(text, sender) {
-    const div = document.createElement('div');
-    div.className = 'message ' + sender;
-    div.textContent = text;
-    chatContainer.appendChild(div);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+        <!-- Recommendations Section -->
+        <div class="recommendations-section">
+            <div class="recommendations-header">
+                <h2>📍 Recommendations</h2>
+                <p id="recommendationStatus">No recommendations yet - start chatting!</p>
+            </div>
 
-function addRecommendations(items) {
-    recommendationsContainer.innerHTML = ''; // 清空
-    items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <strong>${item.name}</strong><br/>
-            Type: ${item.type}<br/>
-            Rating: ${item.rating}<br/>
-            Distance: ${item.distance.toFixed(1)} km<br/>
-            Score: ${item.match_score.toFixed(2)}
-        `;
-        recommendationsContainer.appendChild(card);
-    });
-}
+            <div class="recommendations-container" id="recommendationsContainer">
+                <div class="empty-recommendations">
+                    <p>💡 Recommendations will appear here as we chat</p>
+                </div>
+            </div>
 
-async function sendMessage() {
-    const text = userInput.value.trim();
-    if (!text) return;
-    addMessage(text, 'user');
-    userInput.value = '';
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px; color: #666;">Finding best places for you...</p>
+            </div>
+        </div>
+    </div>
 
-    try {
-        const response = await fetch('http://localhost:8000/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                message: text,
-                session_id: session_id,
-                user_id: user_id,
-                location: user_location
-            })
-        });
-        const data = await response.json();
-
-        // 处理聊天消息
-        addMessage(data.reply || "Sorry, no reply.", 'agent');
-
-        // 如果有推荐内容，展示卡片
-        if (data.recommendations) {
-            addRecommendations(data.recommendations);
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:8000';
+        const session_id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const user_id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // User location (Uppsala coordinates as default)
+        let userLocation = { lat: 59.8586, lng: 17.6389 };
+        
+        // Try to get user's actual location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    console.log('User location obtained:', userLocation);
+                },
+                (error) => {
+                    console.log('Using default Uppsala location');
+                }
+            );
         }
 
-    } catch (err) {
-        console.error(err);
-        addMessage("Error contacting server.", 'agent');
-    }
-}
+        // State management
+        let isTyping = false;
+        let recommendations = [];
+        let conversationHistory = [];
 
-sendBtn.addEventListener('click', sendMessage);
-userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-});
-</script>
+        // DOM elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const recommendationsContainer = document.getElementById('recommendationsContainer');
+        const recommendationStatus = document.getElementById('recommendationStatus');
+        const loadingIndicator = document.getElementById('loadingIndicator');
 
+        // Add message to chat
+        function addMessage(text, sender = 'agent') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.textContent = text;
+            
+            messageDiv.appendChild(bubbleDiv);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Store in history
+            conversationHistory.push({ text, sender, timestamp: new Date() });
+        }
+
+        // Show typing indicator
+        function showTyping() {
+            typingIndicator.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTyping() {
+            typingIndicator.classList.remove('active');
+        }
+
+        // Show loading in recommendations
+        function showLoading() {
+            loadingIndicator.classList.add('active');
+            recommendationsContainer.style.display = 'none';
+        }
+
+        // Hide loading
+        function hideLoading() {
+            loadingIndicator.classList.remove('active');
+            recommendationsContainer.style.display = 'block';
+        }
+
+        // Send message
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Clear input and disable send
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            isTyping = true;
+            
+            // Add user message
+            addMessage(message, 'user');
+            
+            // Show typing and loading
+            showTyping();
+            showLoading();
+            
+            try {
+                // Send to backend
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: session_id,
+                        user_id: user_id,
+                        location: userLocation
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+
+                const data = await response.json();
+                
+                // Hide typing
+                hideTyping();
+                hideLoading();
+                
+                // Add agent response
+                addMessage(data.reply || 'I found some great recommendations for you!', 'agent');
+                
+                // Display recommendations if any
+                if (data.recommendations && data.recommendations.length > 0) {
+                    displayRecommendations(data.recommendations);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideTyping();
+                hideLoading();
+                addMessage('Sorry, I encountered an error. Please try again.', 'agent');
+            } finally {
+                // Re-enable send button
+                sendBtn.disabled = false;
+                isTyping = false;
+                messageInput.focus();
+            }
+        }
+
+        // Display recommendations
+        function displayRecommendations(recs) {
+            recommendations = recs;
+            
+            // Update status
+            recommendationStatus.textContent = `Found ${recs.length} places for you`;
+            
+            // Clear container
+            recommendationsContainer.innerHTML = '';
+            
+            // Add recommendation cards
+            recs.forEach((rec, index) => {
+                const card = createRecommendationCard(rec, index);
+                recommendationsContainer.appendChild(card);
+            });
+        }
+
+        // Create recommendation card
+        function createRecommendationCard(rec, index) {
+            const card = document.createElement('div');
+            card.className = 'recommendation-card';
+            
+            // Format rating
+            const ratingStars = '⭐'.repeat(Math.round(rec.rating || 0));
+            
+            card.innerHTML = `
+                <span class="match-score">${Math.round((rec.match_score || 0) * 100)}% match</span>
+                <h3>${rec.name}</h3>
+                <div class="info">
+                    <div class="info-item">
+                        <span class="type">${rec.type}</span>
+                    </div>
+                    <div class="info-item rating">
+                        ${ratingStars} ${rec.rating ? rec.rating.toFixed(1) : 'N/A'}
+                    </div>
+                    <div class="info-item distance">
+                        📍 ${rec.distance ? rec.distance.toFixed(1) : '?'} km
+                    </div>
+                </div>
+                <div class="feedback-buttons">
+                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 5, this)">
+                        👍 Like
+                    </button>
+                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 1, this)">
+                        👎 Not interested
+                    </button>
+                    <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${rec.name}')">
+                        ℹ️ More info
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Send feedback
+        async function sendFeedback(itemId, rating, button) {
+            // Visual feedback
+            button.classList.add('liked');
+            button.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/feedback`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: session_id,
+                        user_id: user_id,
+                        item_id: itemId,
+                        rating: rating
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Feedback sent successfully');
+                }
+            } catch (error) {
+                console.error('Error sending feedback:', error);
+            }
+        }
+
+        // Get more info about a place
+        function getMoreInfo(itemId, itemName) {
+            const message = `Tell me more about ${itemName}`;
+            messageInput.value = message;
+            sendMessage();
+        }
+
+        // Send quick action
+        function sendQuickAction(text) {
+            messageInput.value = text;
+            sendMessage();
+        }
+
+        // Handle enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // WebSocket connection (optional for real-time features)
+        function connectWebSocket() {
+            const ws = new WebSocket(`ws://localhost:8000/ws/${session_id}`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('WebSocket message:', data);
+                // Handle real-time updates
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                // Attempt to reconnect after 5 seconds
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            return ws;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            messageInput.focus();
+            
+            // Optional: Connect WebSocket for real-time features
+            // const ws = connectWebSocket();
+            
+            console.log('Tourism AI Assistant initialized');
+            console.log('Session ID:', session_id);
+            console.log('User ID:', user_id);
+        });
+    </script>
 </body>
 </html>
