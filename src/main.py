@@ -18,10 +18,7 @@ from loguru import logger
 import yaml
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
 import uuid
-=======
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
 # Import our agents and systems
 from core.memory import MemoryManager
 from core.rag_system import RAGSystem
@@ -67,6 +64,7 @@ class RouteRequest(BaseModel):
     optimize: bool = True
 
 # Global instances
+location_agent = None
 memory_manager = None
 rag_system = None
 conversation_agent = None
@@ -77,7 +75,7 @@ openai_client = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize and cleanup resources."""
-    global memory_manager, rag_system, conversation_agent, preference_extractor, recommendation_agent, openai_client
+    global memory_manager, rag_system, conversation_agent, preference_extractor, recommendation_agent, openai_client, location_agent
     
     # Startup
     logger.info("Initializing Tourism AI Agent...")
@@ -122,7 +120,8 @@ async def lifespan(app: FastAPI):
         conversation_agent = ConversationAgent(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             memory_manager=memory_manager,
-            preference_extractor=preference_extractor
+            preference_extractor=preference_extractor,
+            location_agent=location_agent
         )
         
         # Initialize recommendation agent
@@ -176,10 +175,8 @@ async def health_check():
         }
     }
 
-# Chat endpoint
 @app.post("/chat")
 async def chat(request: Request):
-<<<<<<< HEAD
     """Process chat message and return response with recommendations."""
     try:
         # Parse request data
@@ -187,22 +184,23 @@ async def chat(request: Request):
         message = data.get("message", "")
         session_id = data.get("session_id", str(uuid.uuid4()))
         user_id = data.get("user_id", "anonymous")
-        location = data.get("location", {"lat": 59.8586, "lng": 17.6389})  # Default Uppsala
+        location = data.get("location", None)
         
-        logger.info(f"Chat request - Session: {session_id}, User: {user_id}, Message: {message}")
-        
-        # Process message through conversation agent
+        # ✅ 获取用户 IP 地址（核心改动）
+        ip_address = request.client.host
+        logger.info(f"Chat request - Session: {session_id}, User: {user_id}, Message: {message}, IP: {ip_address}")
+
+        # ✅ 传入 IP 地址到对话 agent
         response_data = conversation_agent.process_message(
             session_id=session_id,
             user_id=user_id,
             message=message,
-            location=location
+            location=location,
+            ip_address=ip_address  # <-- 新增这行
         )
-        
+
         # Get recommendations if appropriate
         recommendations = []
-        
-        # Check if the message is asking for recommendations
         keywords = ['recommend', 'suggest', 'find', 'show', 'restaurant', 'attraction', 'place', 'visit', 'eat', 'do']
         if any(keyword in message.lower() for keyword in keywords):
             try:
@@ -214,8 +212,8 @@ async def chat(request: Request):
                     num_recommendations=5
                 )
                 
-                # Format recommendations for frontend
                 recommendations = [{
+                  
                     "id": r.id,
                     "name": r.name,
                     "type": r.type,
@@ -230,13 +228,11 @@ async def chat(request: Request):
             except Exception as e:
                 logger.error(f"Error getting recommendations: {e}")
         
-        # Prepare response
         reply = response_data.get('message', f"I understand you're asking about: {message}. Let me help you explore Uppsala!")
         
-        # Add recommendations info to reply if available
         if recommendations:
             reply += f" I found {len(recommendations)} great recommendations for you!"
-        
+
         # Store interaction in memory
         memory_manager.store_interaction(
             session_id=session_id,
@@ -252,7 +248,7 @@ async def chat(request: Request):
             "session_id": session_id,
             "status": "success"
         }
-        
+
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         return {
@@ -261,30 +257,7 @@ async def chat(request: Request):
             "status": "error",
             "error": str(e)
         }
-=======
-    data = await request.json()
-    message = data.get("message", "")
-    session_id = data.get("session_id")
-    user_id = data.get("user_id")
-    location = data.get("location", {"lat":0, "lng":0})
 
-    recs = recommendation_agent.get_recommendations(user_id, session_id, location)
-
-
-    recommendations = [{
-        "id": r.id,
-        "name": r.name,
-        "type": r.type,
-        "rating": r.rating,
-        "distance": r.distance,
-        "match_score": r.match_score
-    } for r in recs]
-
-   
-    reply = f"Found {len(recommendations)} recommendations for you."
-
-    return {"reply": reply, "recommendations": recommendations}
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
 
 # WebSocket for real-time chat
 @app.websocket("/ws/{session_id}")
