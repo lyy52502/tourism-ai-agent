@@ -428,21 +428,12 @@
         <!-- Chat Section -->
         <div class="chat-section">
             <div class="chat-header">
-<<<<<<< HEAD
                 <h1>🌟 Tourism Assistant</h1>
                 <p><span class="status-indicator"></span>Online - Ready to help you explore the world!</p>
             </div>
 
             <div class="quick-actions">
                 <button class="quick-action-btn" onclick="sendQuickAction('What are the top attractions?')">Top Attractions</button>
-=======
-                <h1>🌟 Uppsala Tourism Assistant</h1>
-                <p><span class="status-indicator"></span>Online - Ready to help you explore Uppsala!</p>
-            </div>
-
-            <div class="quick-actions">
-                <button class="quick-action-btn" onclick="sendQuickAction('What are the top attractions in Uppsala?')">Top Attractions</button>
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 <button class="quick-action-btn" onclick="sendQuickAction('Find restaurants near me')">Nearby Restaurants</button>
                 <button class="quick-action-btn" onclick="sendQuickAction('Museums to visit')">Museums</button>
                 <button class="quick-action-btn" onclick="sendQuickAction('Outdoor activities')">Outdoor Activities</button>
@@ -453,11 +444,7 @@
                 <!-- Welcome message -->
                 <div class="message agent">
                     <div class="message-bubble">
-<<<<<<< HEAD
                         👋 Welcome to the Tourism Assistant! I can help you discover attractions, restaurants, hotels, and events in Uppsala. What would you like to explore today?
-=======
-                        👋 Welcome to Uppsala Tourism Assistant! I can help you discover attractions, restaurants, hotels, and events in Uppsala. What would you like to explore today?
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                     </div>
                 </div>
             </div>
@@ -502,7 +489,6 @@
     </div>
 
     <script>
-<<<<<<< HEAD
 // Configuration
         const API_URL = 'http://localhost:8000';
         const session_id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -511,31 +497,32 @@
         // User location (Uppsala coordinates as default)
         let userLocation = { lat: 59.8586, lng: 17.6389 };
 
-=======
-        // Configuration
-        const API_URL = 'http://localhost:8000';
-        const session_id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const user_id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // User location (Uppsala coordinates as default)
-        let userLocation = { lat: 59.8586, lng: 17.6389 };
-        
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
         // Try to get user's actual location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    userLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    console.log('User location obtained:', userLocation);
-                },
-                (error) => {
-                    console.log('Using default Uppsala location');
+        let userLocation = { lat: 59.8586, lng: 17.6389 }; // 默认
+
+        function initGeolocation() {
+            return new Promise((resolve) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            userLocation = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            console.log('User location obtained:', userLocation);
+                            resolve(userLocation);
+                        },
+                        (error) => {
+                            console.log('Using default Uppsala location');
+                            resolve(userLocation);
+                        }
+                    );
+                } else {
+                    resolve(userLocation);
                 }
-            );
+            });
         }
+
 
         // State management
         let isTyping = false;
@@ -558,7 +545,6 @@
             
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-<<<<<<< HEAD
             
             // Handle HTML content for agent messages
             if (sender === 'agent') {
@@ -566,9 +552,6 @@
             } else {
                 bubbleDiv.textContent = text; // Use textContent for user messages
             }
-=======
-            bubbleDiv.textContent = text;
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
             
             messageDiv.appendChild(bubbleDiv);
             chatMessages.appendChild(messageDiv);
@@ -619,7 +602,6 @@
             
             // Show typing and loading
             showTyping();
-<<<<<<< HEAD
             
             // Check if message is asking for recommendations
             const isAskingForRecommendations = ['recommend', 'suggest', 'find', 'show', 'restaurant', 
@@ -639,11 +621,6 @@
                     location: userLocation
                 });
                 
-=======
-            showLoading();
-            
-            try {
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 // Send to backend
                 const response = await fetch(`${API_URL}/chat`, {
                     method: 'POST',
@@ -658,7 +635,6 @@
                     })
                 });
 
-<<<<<<< HEAD
                 console.log('Response status:', response.status);
 
                 if (!response.ok) {
@@ -669,24 +645,13 @@
 
                 const data = await response.json();
                 console.log('Response data:', data);
-=======
-                if (!response.ok) {
-                    throw new Error('Failed to get response');
-                }
-
-                const data = await response.json();
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 
                 // Hide typing
                 hideTyping();
                 hideLoading();
                 
                 // Add agent response
-<<<<<<< HEAD
                 addMessage(data.reply || 'I understand your request. Let me help you explore Uppsala!', 'agent');
-=======
-                addMessage(data.reply || 'I found some great recommendations for you!', 'agent');
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
                 
                 // Display recommendations if any
                 if (data.recommendations && data.recommendations.length > 0) {
@@ -694,7 +659,6 @@
                 }
                 
             } catch (error) {
-<<<<<<< HEAD
                 console.error('Error details:', error);
                 hideTyping();
                 hideLoading();
@@ -710,12 +674,6 @@
                 }
                 
                 addMessage(errorMessage, 'agent');
-=======
-                console.error('Error:', error);
-                hideTyping();
-                hideLoading();
-                addMessage('Sorry, I encountered an error. Please try again.', 'agent');
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
             } finally {
                 // Re-enable send button
                 sendBtn.disabled = false;
@@ -724,16 +682,30 @@
             }
         }
 
-        // Display recommendations
+        // Display recommendations safely
         function displayRecommendations(recs) {
             recommendations = recs;
-            
+
+            // Show container and hide loading
+            recommendationsContainer.style.display = 'block';
+            hideLoading();
+
             // Update status
-            recommendationStatus.textContent = `Found ${recs.length} places for you`;
-            
+            recommendationStatus.textContent = recs.length > 0 
+                ? `Found ${recs.length} places for you` 
+                : 'No recommendations found';
+
             // Clear container
             recommendationsContainer.innerHTML = '';
-            
+
+            if (recs.length === 0) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'empty-recommendations';
+                emptyDiv.innerHTML = `<p>💡 No recommendations available</p>`;
+                recommendationsContainer.appendChild(emptyDiv);
+                return;
+            }
+
             // Add recommendation cards
             recs.forEach((rec, index) => {
                 const card = createRecommendationCard(rec, index);
@@ -741,59 +713,52 @@
             });
         }
 
-        // Create recommendation card
+// Create a recommendation card with safe defaults
         function createRecommendationCard(rec, index) {
             const card = document.createElement('div');
             card.className = 'recommendation-card';
-            
-            // Format rating
+
+            // Safe fields
+            const name = rec.name || 'Unknown Place';
+            const type = rec.type || 'Unknown';
+            const rating = rec.rating != null ? rec.rating.toFixed(1) : 'N/A';
             const ratingStars = '⭐'.repeat(Math.round(rec.rating || 0));
-            
-<<<<<<< HEAD
-            // Format match score percentage
+            const distance = rec.distance != null ? rec.distance.toFixed(1) : '?';
             const matchPercentage = Math.round((rec.match_score || 0) * 100);
-            
+            const lat = rec.lat || (userLocation.lat || '?');
+            const lng = rec.lng || (userLocation.lng || '?');
+            const price = rec.price_range || '';
+
             card.innerHTML = `
                 <span class="match-score">${matchPercentage}% match</span>
-=======
-            card.innerHTML = `
-                <span class="match-score">${Math.round((rec.match_score || 0) * 100)}% match</span>
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
-                <h3>${rec.name}</h3>
+                <h3>${name}</h3>
                 <div class="info">
                     <div class="info-item">
-                        <span class="type">${rec.type}</span>
+                        <span class="type">${type}</span>
                     </div>
                     <div class="info-item rating">
-                        ${ratingStars} ${rec.rating ? rec.rating.toFixed(1) : 'N/A'}
+                        ${ratingStars} ${rating}
                     </div>
                     <div class="info-item distance">
-                        📍 ${rec.distance ? rec.distance.toFixed(1) : '?'} km
+                        📍 ${distance} km
                     </div>
-<<<<<<< HEAD
-                    ${rec.price_range ? `<div class="info-item">${rec.price_range}</div>` : ''}
-=======
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
+                    <div class="info-item coordinates">
+                        🌐 [${lat.toFixed(5)}, ${lng.toFixed(5)}]
+                    </div>
+                    ${price ? `<div class="info-item">${price}</div>` : ''}
                 </div>
                 <div class="feedback-buttons">
-                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 5, this)">
-                        👍 Like
-                    </button>
-                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 1, this)">
-                        👎 Not interested
-                    </button>
-<<<<<<< HEAD
-                    <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${rec.name.replace(/'/g, "\\'")}')">
-=======
-                    <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${rec.name}')">
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
-                        ℹ️ More info
-                    </button>
+                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 5, this)">👍 Like</button>
+                    <button class="feedback-btn" onclick="sendFeedback('${rec.id}', 1, this)">👎 Not interested</button>
+                    <button class="feedback-btn" onclick="getMoreInfo('${rec.id}', '${name.replace(/'/g, "\\'")}')">ℹ️ More info</button>
                 </div>
             `;
-            
+
             return card;
         }
+
+
+            
 
         // Send feedback
         async function sendFeedback(itemId, rating, button) {
@@ -844,7 +809,6 @@
             }
         }
 
-<<<<<<< HEAD
         // Test backend connection
         async function testBackendConnection() {
             try {
@@ -864,7 +828,7 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             messageInput.focus();
-            
+            await initGeolocation();
             // Test backend connection
             const isConnected = await testBackendConnection();
             
@@ -878,45 +842,6 @@
                     addMessage('To start the backend server, run: <code>cd backend && python src/main.py</code>', 'agent');
                 }, 2000);
             }
-=======
-        // WebSocket connection (optional for real-time features)
-        function connectWebSocket() {
-            const ws = new WebSocket(`ws://localhost:8000/ws/${session_id}`);
-            
-            ws.onopen = () => {
-                console.log('WebSocket connected');
-            };
-            
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                console.log('WebSocket message:', data);
-                // Handle real-time updates
-            };
-            
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-            
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                // Attempt to reconnect after 5 seconds
-                setTimeout(connectWebSocket, 5000);
-            };
-            
-            return ws;
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            messageInput.focus();
-            
-            // Optional: Connect WebSocket for real-time features
-            // const ws = connectWebSocket();
-            
-            console.log('Tourism AI Assistant initialized');
-            console.log('Session ID:', session_id);
-            console.log('User ID:', user_id);
->>>>>>> a043913f91fee021cb5d2cb18e6cbf22ee02fa54
         });
     </script>
 </body>
