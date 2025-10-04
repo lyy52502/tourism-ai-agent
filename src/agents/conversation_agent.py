@@ -1,18 +1,16 @@
-# src/agents/conversation_agent.py
-
 import os
 from typing import Dict, Any, Optional
 from datetime import datetime
 import json
 from openai import OpenAI
 from loguru import logger
-from agents.location_agent import Location
+from agents.location_agent import Location, LocationAgent, TransportMode  
 from agents.recommendation_agent import RecommendationAgent
+
 class ConversationAgent:
     """Conversation agent with LLM directly leading the conversation."""
     
     def __init__(self, openai_api_key: str, memory_manager, preference_extractor=None, location_agent=None, recommendation_agent=None):
-        # Initialize OpenAI
         self.client = OpenAI(api_key=openai_api_key)
         self.memory = memory_manager
         self.preference_extractor = preference_extractor
@@ -20,23 +18,23 @@ class ConversationAgent:
         self.recommendation_agent = recommendation_agent
         logger.info("Conversation Agent (LLM-direct) initialized")
 
-    def process_message(self, session_id, user_id, message, location=None):
+    def process_message(self, session_id, user_id, message, location=None, ip_address: Optional[str] = None):
         context = self.memory.get_full_context(session_id, user_id)
 
-        # Step 1: Get user location properly
+        # ✅ Step 1: Get user location properly
         user_loc = None
         if location:
-            # Use provided location
-            user_loc = self.location_agent.Location(
+    # Use provided location
+            user_loc = Location(
                 lat=location.get('lat', 59.8586),
                 lng=location.get('lng', 17.6389)
             )
         elif self.location_agent:
-            # Try to get location from IP or use default
-            user_loc = self.location_agent.get_user_location()
+            # Use IP if provided
+            user_loc = self.location_agent.get_user_location(ip_address=ip_address)
         else:
-            # Fallback to Uppsala
-            user_loc = self.location_agent.Location(
+            # Fallback to default location
+            user_loc = Location(
                 lat=59.8586,
                 lng=17.6389,
                 address="Uppsala, Sweden"
@@ -88,7 +86,6 @@ Previous conversation: {context.get('conversation', 'No previous conversation')}
 
         except Exception as e:
             logger.error(f"OpenAI API error: {e}")
-            # Fallback response
             if "italian" in message.lower():
                 final_message = "I'd be happy to help you find Italian restaurants in Uppsala! Let me search for some great options near your location."
             elif "chinese" in message.lower():
