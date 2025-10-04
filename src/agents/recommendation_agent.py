@@ -7,6 +7,8 @@ import json
 import random
 from dataclasses import dataclass, asdict
 from collections import defaultdict
+from agents.location_agent import Location, TransportMode
+from datetime import timedelta
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -95,97 +97,114 @@ class RecommendationAgent:
         
         logger.info("Recommendation Agent initialized with RL")
     
-    def get_recommendations(self,
-                           user_id: str,
-                           session_id: str,
-                           location: Dict[str, float],
-                           context: Optional[Dict] = None,
-                           num_recommendations: int = 5) -> List[RecommendationItem]:
-        """Generate personalized recommendations."""
-        
-        # Enhance context with real-time data if location_agent available
-        if self.location_agent:
-            from agents.location_agent import Location
-            user_location = Location(lat=location.get('lat', 0), lng=location.get('lng', 0))
-            
-            # Get weather
-            weather = self.location_agent.get_weather(user_location)
-            if weather and context:
-                context['weather'] = weather
-            elif weather:
-                context = {'weather': weather}
-            
-            # Get area insights
-            area_insights = self.location_agent.get_area_insights(user_location, radius_km=2.0)
-            if context:
-                context['area_insights'] = area_insights
-            else:
-                context = {'area_insights': area_insights}
-        
-        # Get user preferences
+    def _generate_recommendations(self,
+                              user_id: str,
+                              session_id: str,
+                              location: Dict[str, float],
+                              context: Optional[Dict] = None,
+                              num_recommendations: int = 5) -> List[RecommendationItem]:
+        """Generate scored and RL-reranked recommendations with detailed info."""
+
+        from agents.location_agent import Location, TransportMode
+
+        user_location = Location(lat=location['lat'], lng=location['lng'])
+
+        # 1️⃣ 获取用户偏好
         preferences = self.preference_extractor.get_preference_summary(user_id)
         preference_vector = self.preference_extractor.get_preference_vector(user_id)
-        
-        # Get contextual features
+
+        # 2️⃣ 上下文特征
         context_features = self._extract_context_features(context or {})
-        
-        # Create state vector
         state = self._create_state_vector(preference_vector, context_features, location)
-        
-        # Get candidate items from RAG and Google Places
-        candidates = self._get_candidates(preferences, location, num_candidates=20)
-        
-        # Score candidates using multi-objective optimization
-        scored_candidates = self._score_candidates(
-            candidates,
-            state,
-            preferences,
-            location
-        )
-        
-        # Apply RL-based reranking
-        recommendations = self._apply_rl_reranking(
-            scored_candidates,
-            state,
-            num_recommendations
-        )
-        
-        # Add additional details from location_agent if available
-        if self.location_agent:
-            for rec in recommendations:
+
+        # 3️⃣ 获取候选项
+        candidates = []
+
+        # 3a. RAG / KB
+        search_terms = []
+        for pref_type in ['strong_preferences', 'moderate_preferences']:
+            for pref in preferences.get(pref_type, []):
+                search_terms.append(pref.split(':')[1].strip())
+        query = ' '.join(search_terms[:5])
+        filters = {'max_distance_km': 10}
+
+        rag_results = self.rag.hybrid_search(query, top_k=num_recommendations*2, filters=filters)
+        for doc in rag_results:
+            metadata = doc.metadata
+            item_loc = metadata.get('location', {'lat': 0, 'lng': 0})
+            distance = self.location_agent.calculate_distance(user_location, Location(item_loc['lat'], item_loc['lng'])) \
+                    if self.location_agent else self._calculate_distance(location['lat'], location['lng'], item_loc['lat'], item_loc['lng'])
+            candidates.append(
+                RecommendationItem(
+                    id=doc.id,
+                    name=metadata.get('name', 'Unknown'),
+                    type=metadata.get('type', 'attraction'),
+                    location=item_loc,
+                    rating=metadata.get('rating', 3.5),
+                    price_range=metadata.get('price_range', '$'),
+                    category=metadata.get('category', 'general'),
+                    features=metadata.get('features', []),
+                    distance=distance,
+                    popularity=metadata.get('popularity', 0.5),
+                    match_score=0.0
+                )
+            )
+
+        # 3b. Google Places
+        if self.location_agent and len(candidates) < num_recommendations:
+            place_types = self._extract_place_types(preferences)
+            for place_type in place_types[:3]:
                 try:
-                    # Get travel time to each recommendation
-                    from agents.location_agent import Location, TransportMode
-                    user_loc = Location(lat=location.get('lat', 0), lng=location.get('lng', 0))
-                    rec_loc = Location(lat=rec.location.get('lat', 0), lng=rec.location.get('lng', 0))
-                    
-                    time_info = self.location_agent.get_time_to_location(
-                        user_loc,
-                        rec_loc,
-                        TransportMode.WALKING
+                    places = self.location_agent.find_nearby_places(
+                        location=user_location,
+                        place_type=place_type,
+                        radius=5000,
+                        min_rating=3.5,
+                        max_results=5
                     )
-                    if time_info:
-                        rec.travel_time_minutes = time_info.get('duration_minutes', 0)
-                    
-                    # Check if currently open (for Google Places)
-                    if rec.id.startswith('ChIJ'):  # Google Place ID pattern
-                        is_open = self.location_agent.is_place_open(rec.id)
-                        if is_open is not None:
-                            rec.is_open = is_open
+                    for place in places:
+                        if any(c.id == place.place_id for c in candidates):
+                            continue
+                        candidates.append(
+                            RecommendationItem(
+                                id=place.place_id,
+                                name=place.name,
+                                type=self._map_google_type(place.types[0] if place.types else 'point_of_interest'),
+                                location={'lat': place.location.lat, 'lng': place.location.lng},
+                                rating=place.rating or 0,
+                                price_range=self._map_price_level(place.price_level),
+                                category=place.types[0] if place.types else 'general',
+                                features=place.types[:5] if place.types else [],
+                                distance=self.location_agent.calculate_distance(user_location, place.location),
+                                popularity=min((place.user_ratings_total or 0)/1000, 1.0),
+                                match_score=0.0
+                            )
+                        )
+                        if len(candidates) >= num_recommendations*2:
+                            break
                 except Exception as e:
-                    logger.debug(f"Could not enhance recommendation details: {e}")
-        
-        # Store episode for learning
-        episode = {
-            'episode_id': f"{session_id}_{datetime.now().timestamp()}",
-            'user_id': user_id,
-            'state': state.tolist(),
-            'recommendations': [r.to_dict() for r in recommendations],
-            'context': context or {}
-        }
-        self.memory.episodic.store_episode(episode)
-        
+                    logger.warning(f"Google Places fetch error: {e}")
+
+        # 4️⃣ 打分
+        candidates = self._score_candidates(candidates, state, preferences, location)
+
+        # 5️⃣ RL reranking
+        recommendations = self._apply_rl_reranking(candidates, state, num_recommendations)
+
+        # 6️⃣ 补充 travel_time / is_open
+        for rec in recommendations:
+            try:
+                rec_loc = Location(lat=rec.location.get('lat', 0), lng=rec.location.get('lng', 0))
+                time_info = self.location_agent.get_time_to_location(user_location, rec_loc, TransportMode.WALKING)
+                rec.travel_time_minutes = time_info.get('duration_minutes', 0) if time_info else None
+                if rec.id.startswith('ChIJ'):
+                    rec.is_open = self.location_agent.is_place_open(rec.id)
+            except Exception as e:
+                logger.debug(f"Could not enhance recommendation {rec.name}: {e}")
+
         return recommendations
+
+
     
     def get_contextual_recommendations(self,
                                       user_id: str,
@@ -344,7 +363,6 @@ class RecommendationAgent:
             # Calculate distance
             item_loc = metadata.get('location', {})
             if self.location_agent and item_loc:
-                from agents.location_agent import Location
                 user_loc = Location(lat=location.get('lat', 0), lng=location.get('lng', 0))
                 item_location = Location(lat=item_loc.get('lat', 0), lng=item_loc.get('lng', 0))
                 distance = self.location_agent.calculate_distance(user_loc, item_location)
