@@ -72,6 +72,8 @@ preference_extractor = None
 recommendation_agent = None
 openai_client = None
 
+# Fix for main.py lifespan function - CORRECT INITIALIZATION ORDER
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize and cleanup resources."""
@@ -81,61 +83,80 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Tourism AI Agent...")
     
     try:
-        # Initialize OpenAI client
+        # ✅ Step 1: Initialize OpenAI client
         openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        logger.info("✅ OpenAI client initialized")
         
-        # Initialize memory manager
+        # ✅ Step 2: Initialize memory manager
         memory_manager = MemoryManager(
             redis_host=os.getenv("REDIS_HOST", "localhost"),
             redis_port=int(os.getenv("REDIS_PORT", 6379))
         )
+        logger.info("✅ Memory manager initialized")
         
-        # Initialize RAG system
+        # ✅ Step 3: Initialize RAG system
         rag_system = RAGSystem(
             embedding_model=config['embedding']['model']
         )
+        logger.info("✅ RAG system initialized")
         
         # Load initial data if available
         data_path = "data/knowledge_base/tourism_data.json"
         if os.path.exists(data_path):
             rag_system.load_tourism_data(data_path)
-            logger.info(f"Loaded tourism data from {data_path}")
+            logger.info(f"✅ Loaded tourism data from {data_path}")
+        else:
+            logger.warning(f"⚠️ Tourism data file not found: {data_path}")
         
+        # ✅ Step 4: Initialize location agent
         location_agent = LocationAgent(
             google_maps_api_key=os.getenv("GOOGLE_MAPS_API_KEY"),
             openweather_api_key=os.getenv("OPENWEATHER_API_KEY")
         )
+        logger.info("✅ Location agent initialized")
 
-        route_planner = RoutePlanner(
-            location_agent=location_agent,
-            memory_manager=memory_manager
-        )
-        # Initialize preference extractor
+        # ✅ Step 5: Initialize preference extractor
         preference_extractor = PreferenceExtractor(
             openai_client=openai_client,
             memory_manager=memory_manager
         )
+        logger.info("✅ Preference extractor initialized")
         
-        # Initialize conversation agent
+        # ✅ Step 6: Initialize recommendation agent (BEFORE conversation agent!)
+        recommendation_agent = RecommendationAgent(
+            rag_system=rag_system,
+            preference_extractor=preference_extractor,
+            memory_manager=memory_manager,
+            location_agent=location_agent  # ← CRITICAL: Must pass location_agent
+        )
+        logger.info("✅ Recommendation agent initialized")
+        
+        # ✅ Step 7: Initialize conversation agent (LAST - needs recommendation_agent!)
         conversation_agent = ConversationAgent(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             memory_manager=memory_manager,
             preference_extractor=preference_extractor,
-            location_agent=location_agent
+            location_agent=location_agent,
+            recommendation_agent=recommendation_agent  # ← CRITICAL: Must pass this!
         )
+        logger.info("✅ Conversation agent initialized")
         
-        # Initialize recommendation agent
-        recommendation_agent = RecommendationAgent(
-        rag_system=rag_system,
-        preference_extractor=preference_extractor,
-        memory_manager=memory_manager,
-        location_agent=location_agent  
-    )
-        
-        logger.info("All systems initialized successfully")
+        # ✅ Verify all components are initialized
+        logger.info("=" * 50)
+        logger.info("🎉 All systems initialized successfully!")
+        logger.info(f"   • OpenAI: {openai_client is not None}")
+        logger.info(f"   • Memory: {memory_manager is not None}")
+        logger.info(f"   • RAG: {rag_system is not None}")
+        logger.info(f"   • Location Agent: {location_agent is not None}")
+        logger.info(f"   • Preference Extractor: {preference_extractor is not None}")
+        logger.info(f"   • Recommendation Agent: {recommendation_agent is not None}")
+        logger.info(f"   • Conversation Agent: {conversation_agent is not None}")
+        logger.info("=" * 50)
         
     except Exception as e:
-        logger.error(f"Failed to initialize systems: {e}")
+        logger.error(f"❌ Failed to initialize systems: {e}")
+        import traceback
+        traceback.print_exc()
         raise
     
     yield
@@ -175,63 +196,86 @@ async def health_check():
         }
     }
 
+# Updated /chat endpoint in main.py
+# Updated /chat endpoint in main.py
+
 @app.post("/chat")
 async def chat(request: Request):
     """Process chat message and return response with recommendations."""
     try:
-        # Parse request data
         data = await request.json()
         message = data.get("message", "")
         session_id = data.get("session_id", str(uuid.uuid4()))
         user_id = data.get("user_id", "anonymous")
         location = data.get("location", None)
         
-        # ✅ 获取用户 IP 地址（核心改动）
         ip_address = request.client.host
-        logger.info(f"Chat request - Session: {session_id}, User: {user_id}, Message: {message}, IP: {ip_address}")
+        
+        logger.info(f"📨 Chat request")
+        logger.info(f"   Session: {session_id}")
+        logger.info(f"   User: {user_id}")
+        logger.info(f"   Message: '{message}'")
+        logger.info(f"   Location: {location}")
+        logger.info(f"   IP: {ip_address}")
 
-        # ✅ 传入 IP 地址到对话 agent
+        # ✅ Process message with conversation agent - it handles recommendations internally now!
         response_data = conversation_agent.process_message(
             session_id=session_id,
             user_id=user_id,
             message=message,
             location=location,
-            ip_address=ip_address  # <-- 新增这行
+            ip_address=ip_address
         )
 
-        # Get recommendations if appropriate
+        # ✅ Extract recommendations from conversation agent response
         recommendations = []
-        keywords = ['recommend', 'suggest', 'find', 'show', 'restaurant', 'attraction', 'place', 'visit', 'eat', 'do']
-        if any(keyword in message.lower() for keyword in keywords):
-            try:
-                # Get recommendations
-                recs = recommendation_agent.get_recommendations(
-                    user_id=user_id,
-                    session_id=session_id,
-                    location=location,
-                    num_recommendations=5
-                )
-                
-                recommendations = [{
-                  
-                    "id": r.id,
-                    "name": r.name,
-                    "type": r.type,
-                    "rating": r.rating,
-                    "distance": round(r.distance, 1),
-                    "match_score": round(r.match_score, 2),
-                    "price_range": r.price_range,
-                    "category": r.category
-                } for r in recs]
-                
-                logger.info(f"Generated {len(recommendations)} recommendations")
-            except Exception as e:
-                logger.error(f"Error getting recommendations: {e}")
+        raw_recommendations = response_data.get('recommendations', [])
         
-        reply = response_data.get('message', f"I understand you're asking about: {message}. Let me help you explore Uppsala!")
+        logger.info(f"📦 Got {len(raw_recommendations)} recommendations from conversation agent")
         
-        if recommendations:
-            reply += f" I found {len(recommendations)} great recommendations for you!"
+        # ✅ Format recommendations with all details
+        for r in raw_recommendations:
+            rec_dict = {
+                "id": r.id,
+                "name": r.name,
+                "type": r.type,
+                "rating": r.rating,
+                "distance": round(r.distance, 2),
+                "match_score": round(r.match_score, 2),
+                "price_range": r.price_range,
+                "category": r.category,
+                "location": r.location,
+                "features": r.features,
+                "popularity": r.popularity
+            }
+            
+            # Add photos if available
+            if hasattr(r, 'photos') and r.photos:
+                rec_dict["photos"] = r.photos
+            elif hasattr(r, 'photo_reference') and r.photo_reference:
+                api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+                if api_key:
+                    rec_dict["photos"] = [
+                        f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={r.photo_reference}&key={api_key}"
+                    ]
+            
+            # Add travel time if available
+            if hasattr(r, 'travel_time_minutes') and r.travel_time_minutes:
+                rec_dict["travel_time_minutes"] = round(r.travel_time_minutes, 1)
+            
+            # Add opening status if available
+            if hasattr(r, 'is_open') and r.is_open is not None:
+                rec_dict["is_open"] = r.is_open
+            
+            recommendations.append(rec_dict)
+        
+        logger.info(f"✅ Formatted {len(recommendations)} recommendations")
+        
+        # Get reply from conversation agent
+        reply = response_data.get('message', "I'm here to help you explore Uppsala!")
+        
+        # Get location info
+        response_location = response_data.get('location', location)
 
         # Store interaction in memory
         memory_manager.store_interaction(
@@ -242,23 +286,26 @@ async def chat(request: Request):
             recommendations=recommendations
         )
         
+        logger.info(f"✅ Returning response with {len(recommendations)} recommendations")
+        
         return {
             "reply": reply,
             "recommendations": recommendations,
             "session_id": session_id,
+            "location": response_location,
             "status": "success"
         }
 
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}")
+        logger.error(f"❌ Error in chat endpoint: {e}")
+        import traceback
+        traceback.print_exc()
         return {
-            "reply": "I apologize, but I encountered an error processing your request. Please try again.",
+            "reply": "I apologize, but I encountered an error. Please try again.",
             "recommendations": [],
             "status": "error",
             "error": str(e)
         }
-
-
 # WebSocket for real-time chat
 @app.websocket("/ws/{session_id}")
 async def websocket_chat(websocket: WebSocket, session_id: str):
