@@ -26,7 +26,7 @@
 
 ## 🌟 Overview
 
-The Tourism AI Agent System is a cutting-edge, full-stack application that leverages artificial intelligence to provide personalized travel recommendations and intelligent trip planning. Built with modern technologies including **GPT-4**, **Reinforcement Learning**, **RAG (Retrieval-Augmented Generation)**, and **real-time location services**, this system learns from user interactions to continuously improve its recommendations.
+An intelligent travel assistant powered by GPT-4, Reinforcement Learning, and real-time location services. Provides personalized recommendations through natural conversation.
 
 ### 🎯 Key Highlights
 
@@ -113,7 +113,7 @@ graph TB
     
     PREF --> MEMORY
     
-    RAG --> MILVUS
+    RAG --> Chroma
     MEMORY --> REDIS
     
     CONV --> GPT
