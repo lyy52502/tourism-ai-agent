@@ -2,6 +2,9 @@
 
 ## Intelligent Travel Assistant with Reinforcement Learning & Real-time Recommendations
 
+<img width="1560" height="811" alt="90a7f9a93260e1e06fd398719f6c83d4" src="https://github.com/user-attachments/assets/f2e377b4-3ff8-47c2-9a8a-605b2dd06f4e" />
+
+<img width="1570" height="871" alt="1a98db0b116f28ea106a3a462814c4c7" src="https://github.com/user-attachments/assets/6f0a32d5-886a-4881-bc2a-c0c00e527b22" />
 
 ---
 
